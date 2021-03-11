@@ -4,7 +4,7 @@ import glob
 import re
 import numpy as np
 
-from flask import Flask, redirect, url_for, request, render_template
+from flask import Flask, redirect, url_for, request, render_template, jsonify
 from werkzeug.utils import secure_filename
 
 from keras.models import load_model
@@ -26,7 +26,7 @@ model.layers[0].input_shape
 def model_predict(img, model):
     img_array = image.load_img(img, target_size=(150, 150))
     img_array = np.expand_dims(img_array, axis = 0)
-    result = model.predict_classes(img)
+    result = model.predict_classes(img_array)
     return result
 
 
@@ -39,33 +39,44 @@ def index():
     # return "Hello there"
 
 
+@app.route('/test', methods=['GET'])
+def test():
+    return jsonify({"test":"Hello from server"})
+
+
 @app.route('/predict', methods=['GET', 'POST'])
 def upload():
     if request.method == 'POST':
         #get the file from post request
-        f = request.file['file']
+        print("upload called")
+        f = request.files['image']
 
         #save the file from post request
-        basepath = os.path.join.dirname(__file__)
+        basepath = os.path.dirname(__file__)
         file_path = os.path.join( basepath, 'uploads', secure_filename(f.filename))
         f.save(file_path)
 
+        print("before prediction")
+
         # make prediction
         prediction = model_predict(file_path, model)
+        predictionInt = np.int64(prediction[0]).item()
+
+        print("after prediction")
 
         # These are the prediction categories
         CATEGORIES = ["dandelion", "jasmine", "rose", "sunflower", "viola"]
-        result = CATEGORIES[prediction]
+        result = CATEGORIES[predictionInt]
 
-        return result
+        return jsonify({"flower":result})
 
     return None
 
 
 if __name__ == '__main__':
-    app.run(port=5000, debug=True)
+    app.run(port=5000)
 
-
+ 
 
 
     
